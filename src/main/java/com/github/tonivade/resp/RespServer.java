@@ -53,6 +53,7 @@ public class RespServer implements Resp {
 
   private static final int BUFFER_SIZE = 1024 * 1024;
   private static final int MAX_FRAME_SIZE = BUFFER_SIZE * 100;
+  private static final int DEFAULT_BACKLOG = 1024;
 
   private static final String DEFAULT_HOST = "localhost";
   private static final int DEFAULT_PORT = 12345;
@@ -79,10 +80,13 @@ public class RespServer implements Resp {
     bootstrap.group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
         .childHandler(new RespInitializerHandler(this))
+        .option(ChannelOption.SO_BACKLOG, DEFAULT_BACKLOG)
+        .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
         .childOption(ChannelOption.SO_RCVBUF, BUFFER_SIZE)
         .childOption(ChannelOption.SO_SNDBUF, BUFFER_SIZE)
         .childOption(ChannelOption.SO_KEEPALIVE, true)
+        .childOption(ChannelOption.TCP_NODELAY, true)
         .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
     future = bootstrap.bind(serverContext.getHost(), serverContext.getPort());
