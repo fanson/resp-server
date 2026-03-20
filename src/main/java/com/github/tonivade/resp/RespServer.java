@@ -45,6 +45,7 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
 public class RespServer implements Resp {
@@ -53,6 +54,10 @@ public class RespServer implements Resp {
 
   private static final int BUFFER_SIZE = 1024 * 1024;
   private static final int MAX_FRAME_SIZE = BUFFER_SIZE * 100;
+  private static final int DEFAULT_BACKLOG = 1024;
+
+  private static final AttributeKey<Session> SESSION_KEY = AttributeKey.valueOf("resp.session");
+  private static final AttributeKey<String> SOURCE_KEY = AttributeKey.valueOf("resp.sourceKey");
 
   private static final String DEFAULT_HOST = "localhost";
   private static final int DEFAULT_PORT = 12345;
@@ -79,10 +84,13 @@ public class RespServer implements Resp {
     bootstrap.group(bossGroup, workerGroup)
         .channel(NioServerSocketChannel.class)
         .childHandler(new RespInitializerHandler(this))
+        .option(ChannelOption.SO_BACKLOG, DEFAULT_BACKLOG)
+        .option(ChannelOption.SO_REUSEADDR, true)
         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
         .childOption(ChannelOption.SO_RCVBUF, BUFFER_SIZE)
         .childOption(ChannelOption.SO_SNDBUF, BUFFER_SIZE)
         .childOption(ChannelOption.SO_KEEPALIVE, true)
+        .childOption(ChannelOption.TCP_NODELAY, true)
         .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT);
 
     future = bootstrap.bind(serverContext.getHost(), serverContext.getPort());
@@ -134,12 +142,17 @@ public class RespServer implements Resp {
   public void connected(ChannelHandlerContext ctx) {
     String sourceKey = sourceKey(ctx.channel());
     LOGGER.debug("client connected: {}", sourceKey);
-    getSession(ctx, sourceKey);
+    Session session = getSession(ctx, sourceKey);
+    ctx.channel().attr(SOURCE_KEY).set(sourceKey);
+    ctx.channel().attr(SESSION_KEY).set(session);
   }
 
   @Override
   public void disconnected(ChannelHandlerContext ctx) {
-    String sourceKey = sourceKey(ctx.channel());
+    String sourceKey = ctx.channel().attr(SOURCE_KEY).get();
+    if (sourceKey == null) {
+      sourceKey = sourceKey(ctx.channel());
+    }
 
     LOGGER.debug("client disconnected: {}", sourceKey);
 
@@ -148,11 +161,17 @@ public class RespServer implements Resp {
 
   @Override
   public void receive(ChannelHandlerContext ctx, RedisToken message) {
-    String sourceKey = sourceKey(ctx.channel());
+    Session session = ctx.channel().attr(SESSION_KEY).get();
+    if (session == null) {
+      String sourceKey = sourceKey(ctx.channel());
+      session = getSession(ctx, sourceKey);
+      ctx.channel().attr(SOURCE_KEY).set(sourceKey);
+      ctx.channel().attr(SESSION_KEY).set(session);
+    }
 
-    LOGGER.debug("message received: {}", sourceKey);
+    LOGGER.debug("message received: {}", session.getId());
 
-    parseMessage(message, getSession(ctx, sourceKey))
+    parseMessage(message, session)
       .ifPresent(serverContext::processCommand);
   }
 
@@ -195,7 +214,7 @@ public class RespServer implements Resp {
 
   private String sourceKey(Channel channel) {
     InetSocketAddress remoteAddress = (InetSocketAddress) channel.remoteAddress();
-    return remoteAddress.getHostName() + ":" + remoteAddress.getPort();
+    return remoteAddress.getHostString() + ":" + remoteAddress.getPort();
   }
 
   private Session getSession(ChannelHandlerContext ctx, String sourceKey) {
@@ -224,6 +243,7 @@ public class RespServer implements Resp {
     private String host = DEFAULT_HOST;
     private int port = DEFAULT_PORT;
     private CommandSuite commands = new CommandSuite();
+    private boolean serialExecution = true;
 
     public Builder host(String host) {
       this.host = host;
@@ -250,8 +270,20 @@ public class RespServer implements Resp {
       return this;
     }
 
+    /**
+     * When enabled (default), all commands are executed on a single-thread
+     * executor, providing global serialization. When disabled, commands
+     * execute directly on Netty I/O threads, giving per-connection
+     * serialization with higher throughput for stateless or thread-safe
+     * command implementations.
+     */
+    public Builder parallelExecution() {
+      this.serialExecution = false;
+      return this;
+    }
+
     public RespServer build() {
-      return new RespServer(new RespServerContext(host, port, commands));
+      return new RespServer(new RespServerContext(host, port, commands, SessionListener.nullListener(), serialExecution));
     }
   }
 }

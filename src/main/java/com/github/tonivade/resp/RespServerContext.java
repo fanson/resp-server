@@ -10,6 +10,7 @@ import static com.github.tonivade.resp.util.Precondition.checkRange;
 import static com.github.tonivade.resp.SessionListener.nullListener;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Function;
 import org.slf4j.Logger;
@@ -22,32 +23,36 @@ import com.github.tonivade.resp.command.ServerContext;
 import com.github.tonivade.resp.command.Session;
 import com.github.tonivade.resp.protocol.RedisToken;
 
-import io.reactivex.rxjava3.core.Observable;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-
 public class RespServerContext implements ServerContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RespServerContext.class);
 
   private final StateHolder state = new StateHolder();
   private final ConcurrentHashMap<String, Session> clients = new ConcurrentHashMap<>();
-  private final Scheduler scheduler = Schedulers.from(Executors.newSingleThreadExecutor());
 
   private final String host;
   private final int port;
   private final CommandSuite commands;
   private final SessionListener sessionListener;
+  private final boolean serialExecution;
+  private final ExecutorService serialExecutor;
 
   public RespServerContext(String host, int port, CommandSuite commands) {
     this(host, port, commands, nullListener());
   }
 
   public RespServerContext(String host, int port, CommandSuite commands, SessionListener sessionListener) {
+    this(host, port, commands, sessionListener, true);
+  }
+
+  public RespServerContext(String host, int port, CommandSuite commands,
+      SessionListener sessionListener, boolean serialExecution) {
     this.host = checkNonEmpty(host);
     this.port = checkRange(port, 1024, 65535);
     this.commands = checkNonNull(commands);
     this.sessionListener = checkNonNull(sessionListener);
+    this.serialExecution = serialExecution;
+    this.serialExecutor = serialExecution ? Executors.newSingleThreadExecutor() : null;
   }
 
   public void start() {
@@ -56,7 +61,9 @@ public class RespServerContext implements ServerContext {
 
   public void stop() {
     clear();
-    scheduler.shutdown();
+    if (serialExecutor != null) {
+      serialExecutor.shutdown();
+    }
   }
 
   @Override
@@ -106,12 +113,23 @@ public class RespServerContext implements ServerContext {
     LOGGER.debug("received command: {}", request);
 
     var command = getCommand(request.getCommand());
-    try {
-      enqueue(Observable.fromCallable(() -> executeCommand(command, request)))
-        .subscribe(response -> processResponse(request, response),
-                   ex -> LOGGER.error("error executing command: " + request, ex));
-    } catch (RuntimeException ex) {
-      LOGGER.error("error executing command: " + request, ex);
+    if (serialExecution) {
+      serialExecutor.execute(() -> {
+        try {
+          RedisToken response = executeCommand(command, request);
+          processResponse(request, response);
+          request.getSession().flush();
+        } catch (RuntimeException ex) {
+          LOGGER.error("error executing command: " + request, ex);
+        }
+      });
+    } else {
+      try {
+        RedisToken response = executeCommand(command, request);
+        processResponse(request, response);
+      } catch (RuntimeException ex) {
+        LOGGER.error("error executing command: " + request, ex);
+      }
     }
   }
 
@@ -132,10 +150,6 @@ public class RespServerContext implements ServerContext {
 
   protected RedisToken executeCommand(RespCommand command, Request request) {
     return command.execute(request);
-  }
-
-  protected <T> Observable<T> enqueue(Observable<T> observable) {
-    return observable.subscribeOn(scheduler);
   }
 
   private void processResponse(Request request, RedisToken token) {

@@ -119,6 +119,26 @@ public class SafeString implements Comparable<SafeString>, Serializable {
     return toString().substring(i);
   }
 
+  public int parseIntAfterPrefix() {
+    int pos = buffer.position();
+    int lim = buffer.limit();
+    boolean negative = false;
+    int result = 0;
+    int start = pos + 1;
+    if (start < lim && buffer.get(start) == '-') {
+      negative = true;
+      start++;
+    }
+    for (int i = start; i < lim; i++) {
+      byte b = buffer.get(i);
+      if (b < '0' || b > '9') {
+        break;
+      }
+      result = result * 10 + (b - '0');
+    }
+    return negative ? -result : result;
+  }
+
   private static int compare(byte[] left, byte[] right) {
     for (int i = 0, j = 0; i < left.length && j < right.length; i++, j++) {
       int a = (left[i] & 0xff);

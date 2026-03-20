@@ -4,13 +4,13 @@
  */
 package com.github.tonivade.resp;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class StateHolder {
 
-  private final Map<String, Object> state = new HashMap<>();
+  private final Map<String, Object> state = new ConcurrentHashMap<>();
 
   @SuppressWarnings("unchecked")
   public <T> Optional<T> getValue(String key) {
