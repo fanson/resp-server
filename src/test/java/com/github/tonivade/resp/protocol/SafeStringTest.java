@@ -42,6 +42,32 @@ class SafeStringTest {
   }
 
   @Test
+  void parseIntAfterPrefixPositive() {
+    assertThat(safeString("*3").parseIntAfterPrefix(), is(3));
+    assertThat(safeString("$123").parseIntAfterPrefix(), is(123));
+    assertThat(safeString(":42").parseIntAfterPrefix(), is(42));
+  }
+
+  @Test
+  void parseIntAfterPrefixNegative() {
+    assertThat(safeString(":-1").parseIntAfterPrefix(), is(-1));
+    assertThat(safeString("$-1").parseIntAfterPrefix(), is(-1));
+    assertThat(safeString(":-999").parseIntAfterPrefix(), is(-999));
+  }
+
+  @Test
+  void parseIntAfterPrefixZero() {
+    assertThat(safeString("$0").parseIntAfterPrefix(), is(0));
+    assertThat(safeString(":0").parseIntAfterPrefix(), is(0));
+  }
+
+  @Test
+  void parseIntAfterPrefixLargeNumber() {
+    assertThat(safeString("*100000").parseIntAfterPrefix(), is(100000));
+    assertThat(safeString(":2147483647").parseIntAfterPrefix(), is(Integer.MAX_VALUE));
+  }
+
+  @Test
   void testSet() {
     NavigableSet<SafeString> set = new TreeSet<>(safeAsList("1", "2", "3"));
 

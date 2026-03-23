@@ -8,6 +8,7 @@ import static com.github.tonivade.resp.protocol.SafeString.safeAsList;
 import static com.github.tonivade.resp.protocol.SafeString.safeString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.CoreMatchers.sameInstance;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.Test;
@@ -30,5 +31,28 @@ class DefaultRequestTest {
     assertThat(request.getOptionalParam(2).get(), is(safeString("3")));
     assertThat(request.getOptionalParam(3).isPresent(), is(false));
     assertThat(request.toString(), is("a[3]: [1, 2, 3]"));
+  }
+
+  @Test
+  void getCommandReturnsCachedInstance() {
+    DefaultRequest request = new DefaultRequest(null, null, safeString("PING"),
+                                                safeAsList());
+
+    String first = request.getCommand();
+    String second = request.getCommand();
+
+    assertThat(first, is("PING"));
+    assertThat(second, sameInstance(first));
+  }
+
+  @Test
+  void isExitUsesCache() {
+    DefaultRequest quit = new DefaultRequest(null, null, safeString("QUIT"),
+                                             safeAsList());
+    DefaultRequest ping = new DefaultRequest(null, null, safeString("PING"),
+                                             safeAsList());
+
+    assertThat(quit.isExit(), is(true));
+    assertThat(ping.isExit(), is(false));
   }
 }
