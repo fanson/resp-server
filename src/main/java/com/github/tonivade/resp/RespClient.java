@@ -101,7 +101,7 @@ public class RespClient implements Resp {
 
   @Override
   public void disconnected(ChannelHandlerContext ctx) {
-    LOGGER.info("client disconected from server: {}:{}", host, port);
+    LOGGER.info("client disconnected from server: {}:{}", host, port);
     if (this.context != null) {
       callback.onDisconnect();
       this.context = null;
