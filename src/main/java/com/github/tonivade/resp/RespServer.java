@@ -199,7 +199,7 @@ public class RespServer implements Resp {
 
   private String sourceKey(Channel channel) {
     InetSocketAddress remoteAddress = (InetSocketAddress) channel.remoteAddress();
-    return remoteAddress.getHostName() + ":" + remoteAddress.getPort();
+    return remoteAddress.getHostString() + ":" + remoteAddress.getPort();
   }
 
   private Session getSession(ChannelHandlerContext ctx, String sourceKey) {
