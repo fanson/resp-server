@@ -85,7 +85,7 @@ dependencies {
   testRuntimeOnly libs.junitLauncher
   testImplementation libs.mockitoCore
   testImplementation libs.hamcrestLibrary
-  testRuntimeOnly libs.logbackClassic
+  testImplementation libs.logbackClassic
 }
 
 publishing {
