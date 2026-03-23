@@ -8,9 +8,10 @@ import static com.github.tonivade.resp.util.Precondition.checkNonEmpty;
 import static com.github.tonivade.resp.util.Precondition.checkNonNull;
 import static com.github.tonivade.resp.util.Precondition.checkRange;
 import static com.github.tonivade.resp.SessionListener.nullListener;
+import static java.util.concurrent.Executors.newSingleThreadExecutor;
+
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -28,11 +29,18 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 
 public class RespServerContext implements ServerContext {
 
+  private static final String RESP_SERVER = "resp-server";
+
   private static final Logger LOGGER = LoggerFactory.getLogger(RespServerContext.class);
 
   private final StateHolder state = new StateHolder();
   private final ConcurrentHashMap<String, Session> clients = new ConcurrentHashMap<>();
-  private final Scheduler scheduler = Schedulers.from(Executors.newSingleThreadExecutor());
+  private final Scheduler scheduler = Schedulers.from(newSingleThreadExecutor(runnable -> {
+    Thread thread = new Thread(runnable);
+    thread.setName(RESP_SERVER);
+    thread.setDaemon(true);
+    return thread;
+  }));
 
   private final String host;
   private final int port;

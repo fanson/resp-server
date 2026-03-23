@@ -4,13 +4,18 @@
  */
 package com.github.tonivade.resp.command;
 
-import static com.github.tonivade.resp.util.Precondition.checkNonNull;
 import static com.github.tonivade.resp.protocol.RedisToken.error;
+import static com.github.tonivade.resp.util.Precondition.checkNonNull;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.tonivade.resp.annotation.ParamLength;
 import com.github.tonivade.resp.protocol.RedisToken;
 
 public class CommandWrapper implements RespCommand {
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(CommandWrapper.class);
 
   private Integer params;
 
@@ -29,6 +34,8 @@ public class CommandWrapper implements RespCommand {
 
   @Override
   public RedisToken execute(Request request) {
+    LOGGER.debug("Executing command: {}", request.getCommand());
+
     if (params != null && optionParams != null && (request.getLength() < params || request.getLength() > optionParams)) {
       return error("ERR wrong number of arguments for '" + request.getCommand() + "' command");
     }
