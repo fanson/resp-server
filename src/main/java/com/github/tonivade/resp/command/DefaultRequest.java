@@ -19,6 +19,8 @@ public class DefaultRequest implements Request {
 
   private final ServerContext server;
 
+  private String commandString;
+
   public DefaultRequest(ServerContext server, Session session, SafeString command, List<SafeString> params) {
     this.server = server;
     this.session = session;
@@ -28,7 +30,10 @@ public class DefaultRequest implements Request {
 
   @Override
   public String getCommand() {
-    return command.toString();
+    if (commandString == null) {
+      commandString = command.toString();
+    }
+    return commandString;
   }
 
   @Override
@@ -61,7 +66,7 @@ public class DefaultRequest implements Request {
 
   @Override
   public boolean isExit() {
-    return command.toString().equalsIgnoreCase("quit");
+    return getCommand().equalsIgnoreCase("quit");
   }
 
   @Override
