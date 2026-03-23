@@ -173,6 +173,7 @@ public class RespServerContext implements ServerContext {
 
   private void processResponse(Request request, RedisToken token) {
     request.getSession().publish(token);
+    request.getSession().flush();
     if (request.isExit()) {
       request.getSession().close();
     }
