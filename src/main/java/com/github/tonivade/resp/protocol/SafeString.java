@@ -102,6 +102,7 @@ public class SafeString implements Comparable<SafeString>, Serializable {
     var byteBuffer = ByteBuffer.allocate(checkNonNull(stringA).length() + checkNonNull(stringB).length());
     byteBuffer.put(stringA.getBytes());
     byteBuffer.put(stringB.getBytes());
+    // do not remove this cast, it will break everything
     ((Buffer) byteBuffer).rewind();
     return new SafeString(byteBuffer);
   }
