@@ -9,6 +9,7 @@ import static com.github.tonivade.resp.protocol.SafeString.safeString;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.not;
 import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,39 @@ class CommandSuiteTest {
     commandSuite.addCommand(GoodCommand::new);
 
     assertThat(commandSuite.isPresent("good", ParamLength.class), is(false));
+  }
+
+  @Test
+  void getCommandCaseInsensitive() {
+    commandSuite.addCommand(GoodCommand::new);
+
+    assertThat(commandSuite.getCommand("good"), is(not(instanceOf(NullCommand.class))));
+    assertThat(commandSuite.getCommand("GOOD"), is(not(instanceOf(NullCommand.class))));
+    assertThat(commandSuite.getCommand("Good"), is(not(instanceOf(NullCommand.class))));
+  }
+
+  @Test
+  void containsCaseInsensitive() {
+    commandSuite.addCommand(GoodCommand::new);
+
+    assertThat(commandSuite.contains("good"), is(true));
+    assertThat(commandSuite.contains("GOOD"), is(true));
+    assertThat(commandSuite.contains("Good"), is(true));
+  }
+
+  @Test
+  void isPresentCaseInsensitive() {
+    commandSuite.addCommand(GoodCommand::new);
+
+    assertThat(commandSuite.isPresent("GOOD", Command.class), is(true));
+    assertThat(commandSuite.isPresent("Good", Command.class), is(true));
+  }
+
+  @Test
+  void builtInCommandsCaseInsensitive() {
+    assertThat(commandSuite.getCommand("PING"), is(not(instanceOf(NullCommand.class))));
+    assertThat(commandSuite.getCommand("ping"), is(not(instanceOf(NullCommand.class))));
+    assertThat(commandSuite.getCommand("Ping"), is(not(instanceOf(NullCommand.class))));
   }
 
   @Test
