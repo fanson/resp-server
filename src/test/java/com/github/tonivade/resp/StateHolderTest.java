@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 class StateHolderTest {
 
@@ -51,6 +52,17 @@ class StateHolderTest {
 
     state.clear();
     assertThat(state.getValue(KEY), equalTo(Optional.empty()));
+  }
+
+  @Test
+  void withConcurrentHashMap() {
+    var concurrentState = new StateHolder(new ConcurrentHashMap<>());
+
+    concurrentState.putValue(KEY, VALUE);
+    assertThat(concurrentState.getValue(KEY), equalTo(Optional.of(VALUE)));
+
+    concurrentState.removeValue(KEY);
+    assertThat(concurrentState.getValue(KEY), equalTo(Optional.empty()));
   }
 
 }

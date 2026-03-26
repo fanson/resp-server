@@ -228,6 +228,7 @@ public class RespServer implements Resp {
     private String host = DEFAULT_HOST;
     private int port = DEFAULT_PORT;
     private CommandSuite commands = new CommandSuite();
+    private boolean parallelExecution = false;
 
     public Builder host(String host) {
       this.host = host;
@@ -254,8 +255,19 @@ public class RespServer implements Resp {
       return this;
     }
 
+    /**
+     * Enables parallel command execution on Netty I/O threads, bypassing the
+     * single-thread RxJava scheduler. State uses ConcurrentHashMap for
+     * thread safety. Best for stateless, thread-safe commands where
+     * maximum throughput and lowest latency are required.
+     */
+    public Builder parallelExecution() {
+      this.parallelExecution = true;
+      return this;
+    }
+
     public RespServer build() {
-      return new RespServer(new RespServerContext(host, port, commands));
+      return new RespServer(new RespServerContext(host, port, commands, SessionListener.nullListener(), parallelExecution));
     }
   }
 }

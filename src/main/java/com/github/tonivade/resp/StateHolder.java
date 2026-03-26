@@ -10,7 +10,15 @@ import java.util.Optional;
 
 public class StateHolder {
 
-  private final Map<String, Object> state = new HashMap<>();
+  private final Map<String, Object> state;
+
+  public StateHolder() {
+    this(new HashMap<>());
+  }
+
+  public StateHolder(Map<String, Object> state) {
+    this.state = state;
+  }
 
   @SuppressWarnings("unchecked")
   public <T> Optional<T> getValue(String key) {

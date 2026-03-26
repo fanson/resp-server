@@ -10,6 +10,7 @@ import static com.github.tonivade.resp.util.Precondition.checkRange;
 import static com.github.tonivade.resp.SessionListener.nullListener;
 import static java.util.concurrent.Executors.newSingleThreadExecutor;
 
+import java.util.HashMap;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
@@ -33,14 +34,10 @@ public class RespServerContext implements ServerContext {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(RespServerContext.class);
 
-  private final StateHolder state = new StateHolder();
+  private final StateHolder state;
   private final ConcurrentHashMap<String, Session> clients = new ConcurrentHashMap<>();
-  private final Scheduler scheduler = Schedulers.from(newSingleThreadExecutor(runnable -> {
-    Thread thread = new Thread(runnable);
-    thread.setName(RESP_SERVER);
-    thread.setDaemon(true);
-    return thread;
-  }));
+  private final Scheduler scheduler;
+  private final boolean parallelExecution;
 
   private final String host;
   private final int port;
@@ -52,10 +49,24 @@ public class RespServerContext implements ServerContext {
   }
 
   public RespServerContext(String host, int port, CommandSuite commands, SessionListener sessionListener) {
+    this(host, port, commands, sessionListener, false);
+  }
+
+  public RespServerContext(String host, int port, CommandSuite commands,
+      SessionListener sessionListener, boolean parallelExecution) {
     this.host = checkNonEmpty(host);
     this.port = checkRange(port, 1024, 65535);
     this.commands = checkNonNull(commands);
     this.sessionListener = checkNonNull(sessionListener);
+    this.parallelExecution = parallelExecution;
+    if (parallelExecution) {
+      this.state = new StateHolder(new ConcurrentHashMap<>());
+      this.scheduler = null;
+    } else {
+      this.state = new StateHolder(new HashMap<>());
+      this.scheduler = Schedulers.from(
+          newSingleThreadExecutor(runnable -> newDaemonThread(runnable, RESP_SERVER)));
+    }
   }
 
   public void start() {
@@ -64,7 +75,9 @@ public class RespServerContext implements ServerContext {
 
   public void stop() {
     clear();
-    scheduler.shutdown();
+    if (scheduler != null) {
+      scheduler.shutdown();
+    }
   }
 
   @Override
@@ -114,12 +127,21 @@ public class RespServerContext implements ServerContext {
     LOGGER.debug("received command: {}", request);
 
     var command = getCommand(request.getCommand());
-    try {
-      enqueue(Observable.fromCallable(() -> executeCommand(command, request)))
-        .subscribe(response -> processResponse(request, response),
-                   ex -> LOGGER.error("error executing command: " + request, ex));
-    } catch (RuntimeException ex) {
-      LOGGER.error("error executing command: " + request, ex);
+    if (parallelExecution) {
+      try {
+        RedisToken response = executeCommand(command, request);
+        processResponse(request, response);
+      } catch (RuntimeException ex) {
+        LOGGER.error("error executing command: " + request, ex);
+      }
+    } else {
+      try {
+        enqueue(Observable.fromCallable(() -> executeCommand(command, request)))
+          .subscribe(response -> processResponse(request, response),
+                     ex -> LOGGER.error("error executing command: " + request, ex));
+      } catch (RuntimeException ex) {
+        LOGGER.error("error executing command: " + request, ex);
+      }
     }
   }
 
@@ -143,6 +165,9 @@ public class RespServerContext implements ServerContext {
   }
 
   protected <T> Observable<T> enqueue(Observable<T> observable) {
+    if (scheduler == null) {
+      return observable;
+    }
     return observable.subscribeOn(scheduler);
   }
 
@@ -156,5 +181,12 @@ public class RespServerContext implements ServerContext {
   private void clear() {
     clients.clear();
     state.clear();
+  }
+
+  private static Thread newDaemonThread(Runnable runnable, String name) {
+    Thread thread = new Thread(runnable);
+    thread.setName(name);
+    thread.setDaemon(true);
+    return thread;
   }
 }
