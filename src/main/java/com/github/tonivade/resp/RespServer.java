@@ -162,12 +162,6 @@ public class RespServer implements Resp {
   @Override
   public void receive(ChannelHandlerContext ctx, RedisToken message) {
     Session session = ctx.channel().attr(SESSION_KEY).get();
-    if (session == null) {
-      String sourceKey = sourceKey(ctx.channel());
-      session = getSession(ctx, sourceKey);
-      ctx.channel().attr(SOURCE_KEY).set(sourceKey);
-      ctx.channel().attr(SESSION_KEY).set(session);
-    }
 
     LOGGER.debug("message received: {}", session.getId());
 
