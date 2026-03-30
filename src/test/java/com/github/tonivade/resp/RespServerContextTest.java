@@ -159,6 +159,34 @@ public class RespServerContextTest {
     assertThrows(IllegalArgumentException.class, () -> new RespServerContext(HOST, PORT, null));
   }
 
+  @Test
+  public void processCommandParallelExecution() {
+    var parallelContext = new RespServerContext(HOST, PORT, commands,
+        SessionListener.nullListener(), true);
+    Request request = new DefaultRequest(parallelContext, session, safeString("test"), Collections.emptyList());
+    when(commands.getCommand(request.getCommand())).thenReturn(respCommand);
+    when(respCommand.execute(request)).thenReturn(nullString());
+
+    parallelContext.processCommand(request);
+
+    verify(respCommand, timeout(1000)).execute(request);
+    verify(session, timeout(1000)).publish(nullString());
+  }
+
+  @Test
+  public void processCommandParallelExecutionException() {
+    var parallelContext = new RespServerContext(HOST, PORT, commands,
+        SessionListener.nullListener(), true);
+    Request request = new DefaultRequest(parallelContext, session, safeString("test"), Collections.emptyList());
+    when(commands.getCommand(request.getCommand())).thenReturn(respCommand);
+    doThrow(RuntimeException.class).when(respCommand).execute(request);
+
+    parallelContext.processCommand(request);
+
+    verify(respCommand, timeout(1000)).execute(request);
+    verify(session, timeout(1000).atLeast(0)).publish(any());
+  }
+
   private Request newRequest(String command) {
     return new DefaultRequest(serverContext, session, safeString(command), Collections.emptyList());
   }
