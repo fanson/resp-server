@@ -9,6 +9,7 @@ import static com.github.tonivade.resp.protocol.SafeString.safeAsList;
 import static com.github.tonivade.resp.protocol.SafeString.safeString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Iterator;
 import java.util.List;
@@ -39,6 +40,39 @@ class SafeStringTest {
     assertThat(list.get(0), is(safeString("1")));
     assertThat(list.get(1), is(safeString("2")));
     assertThat(list.get(2), is(safeString("3")));
+  }
+
+  @Test
+  void parseIntAfterPrefixPositive() {
+    assertThat(safeString("*3").parseIntAfterPrefix(), is(3));
+    assertThat(safeString("$123").parseIntAfterPrefix(), is(123));
+    assertThat(safeString(":42").parseIntAfterPrefix(), is(42));
+  }
+
+  @Test
+  void parseIntAfterPrefixNegative() {
+    assertThat(safeString(":-1").parseIntAfterPrefix(), is(-1));
+    assertThat(safeString("$-1").parseIntAfterPrefix(), is(-1));
+    assertThat(safeString(":-999").parseIntAfterPrefix(), is(-999));
+  }
+
+  @Test
+  void parseIntAfterPrefixZero() {
+    assertThat(safeString("$0").parseIntAfterPrefix(), is(0));
+    assertThat(safeString(":0").parseIntAfterPrefix(), is(0));
+  }
+
+  @Test
+  void parseIntAfterPrefixLargeNumber() {
+    assertThat(safeString("*100000").parseIntAfterPrefix(), is(100000));
+    assertThat(safeString(":2147483647").parseIntAfterPrefix(), is(Integer.MAX_VALUE));
+  }
+
+  @Test
+  void parseIntAfterPrefixInvalidCharacter() {
+    assertThrows(NumberFormatException.class, () -> safeString("*abc").parseIntAfterPrefix());
+    assertThrows(NumberFormatException.class, () -> safeString("$12x").parseIntAfterPrefix());
+    assertThrows(NumberFormatException.class, () -> safeString(":1.5").parseIntAfterPrefix());
   }
 
   @Test

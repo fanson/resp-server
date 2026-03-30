@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public class DefaultRequest implements Request {
 
-  private final SafeString command;
+  private final String command;
 
   private final List<SafeString> params;
 
@@ -22,13 +22,13 @@ public class DefaultRequest implements Request {
   public DefaultRequest(ServerContext server, Session session, SafeString command, List<SafeString> params) {
     this.server = server;
     this.session = session;
-    this.command = checkNonNull(command);
+    this.command = checkNonNull(command).toString();
     this.params = checkNonNull(params);
   }
 
   @Override
   public String getCommand() {
-    return command.toString();
+    return command;
   }
 
   @Override
@@ -61,7 +61,7 @@ public class DefaultRequest implements Request {
 
   @Override
   public boolean isExit() {
-    return command.toString().equalsIgnoreCase("quit");
+    return getCommand().equalsIgnoreCase("quit");
   }
 
   @Override

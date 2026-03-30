@@ -60,7 +60,7 @@ public class RedisParser implements Iterator<RedisToken> {
     RedisToken token = new UnknownRedisToken(SafeString.EMPTY_STRING);
     if (line != null && !line.isEmpty()) {
       if (line.startsWith(ARRAY_PREFIX)) {
-        int size = Integer.parseInt(line.substring(1));
+        int size = line.parseIntAfterPrefix();
         token = parseArray(size);
       } else if (line.startsWith(STATUS_PREFIX)) {
         token = status(line.substring(1));
@@ -78,13 +78,12 @@ public class RedisParser implements Iterator<RedisToken> {
   }
 
   private RedisToken parseIntegerToken(SafeString line) {
-    Integer value = Integer.valueOf(line.substring(1));
-    return new IntegerRedisToken(value);
+    return new IntegerRedisToken(line.parseIntAfterPrefix());
   }
 
   private RedisToken parseStringToken(SafeString line) {
     StringRedisToken token;
-    int length = Integer.parseInt(line.substring(1));
+    int length = line.parseIntAfterPrefix();
     if (length >= 0 && length < maxLength) {
       token = new StringRedisToken(source.readString(length));
     } else {
