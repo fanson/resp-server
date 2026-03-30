@@ -37,7 +37,6 @@ public class RespServerContext implements ServerContext {
   private final StateHolder state;
   private final ConcurrentHashMap<String, Session> clients = new ConcurrentHashMap<>();
   private final Scheduler scheduler;
-  private final boolean parallelExecution;
 
   private final String host;
   private final int port;
@@ -58,7 +57,6 @@ public class RespServerContext implements ServerContext {
     this.port = checkRange(port, 1024, 65535);
     this.commands = checkNonNull(commands);
     this.sessionListener = checkNonNull(sessionListener);
-    this.parallelExecution = parallelExecution;
     if (parallelExecution) {
       this.state = new StateHolder(new ConcurrentHashMap<>());
       this.scheduler = null;
@@ -127,7 +125,7 @@ public class RespServerContext implements ServerContext {
     LOGGER.debug("received command: {}", request);
 
     var command = getCommand(request.getCommand());
-    if (parallelExecution) {
+    if (scheduler == null) {
       try {
         RedisToken response = executeCommand(command, request);
         processResponse(request, response);
