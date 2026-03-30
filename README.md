@@ -62,10 +62,14 @@ In this sample, `ECHO` is the command and `Hello world!` is the parameter.
 
 ## How is implemented?
 
-The protocol is implemented in Java8, using asynchronous IO ([netty](https://netty.io/)), and using the
+The protocol is implemented in Java 8, using asynchronous IO ([netty](https://netty.io/)), and using the
 reactive programming paradigm ([rxjava](http://www.rxjava.com/)). What that means? It means that is single
 thread, every request is managed inside the same thread, so there's no concurrency
 issues at all, the same way as REDIS works.
+
+## Changes in v1.0
+
+Now the minimum java version is Java 11, so previous versions are not supported anymore.
 
 ## How can I use it?
 
@@ -74,6 +78,17 @@ It's very easy, you only need 2 lines of code to start the server
 ```java
     RespServer server = RespServer.builder()
       .host("localhost").port(12345).commands(new CommandSuite()).build();
+    server.start();
+```
+
+Since version v1.0, you can use a different concurrency model, and instead of using a single thread,
+enabling the `parallelExecution` flag the server will skip any rxjava scheduler and it will execute the
+command in the same netty thread, instead of serializing all the requests. This will improve the
+throuput.
+
+```java
+    RespServer server = RespServer.builder()
+      .host("localhost").port(12345).commands(new CommandSuite()).parallelExecution().build();
     server.start();
 ```
 
