@@ -151,12 +151,12 @@ is rejected with an error.
     <dependency>
         <groupId>com.github.tonivade</groupId>
         <artifactId>resp-server</artifactId>
-        <version>0.26.0</version>
+        <version>1.0</version>
     </dependency>
 
 ## Gradle
 
-    compile 'com.github.tonivade:resp-server:0.26.0'
+    compile 'com.github.tonivade:resp-server:1.0'
     
 ## Stargazers over time
 
