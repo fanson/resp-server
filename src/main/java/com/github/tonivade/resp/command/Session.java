@@ -11,6 +11,7 @@ import java.util.Optional;
 public interface Session {
   String getId();
   void publish(RedisToken msg);
+  default void flush() {}
   void close();
   void destroy();
   <T> Optional<T> getValue(String key);

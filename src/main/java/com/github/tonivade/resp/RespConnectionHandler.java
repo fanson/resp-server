@@ -42,6 +42,11 @@ class RespConnectionHandler extends ChannelInboundHandlerAdapter {
   }
 
   @Override
+  public void channelReadComplete(ChannelHandlerContext ctx) throws Exception {
+    ctx.flush();
+  }
+
+  @Override
   public void channelInactive(ChannelHandlerContext ctx) throws Exception {
     LOGGER.debug("channel inactive");
     impl.disconnected(ctx);

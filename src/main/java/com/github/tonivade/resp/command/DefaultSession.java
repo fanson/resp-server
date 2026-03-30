@@ -36,7 +36,12 @@ public class DefaultSession implements Session {
 
   @Override
   public void publish(RedisToken msg) {
-    ctx.writeAndFlush(msg);
+    ctx.write(msg);
+  }
+
+  @Override
+  public void flush() {
+    ctx.flush();
   }
 
   @Override
