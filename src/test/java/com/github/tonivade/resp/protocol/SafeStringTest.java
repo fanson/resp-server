@@ -9,6 +9,7 @@ import static com.github.tonivade.resp.protocol.SafeString.safeAsList;
 import static com.github.tonivade.resp.protocol.SafeString.safeString;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Iterator;
 import java.util.List;
@@ -65,6 +66,13 @@ class SafeStringTest {
   void parseIntAfterPrefixLargeNumber() {
     assertThat(safeString("*100000").parseIntAfterPrefix(), is(100000));
     assertThat(safeString(":2147483647").parseIntAfterPrefix(), is(Integer.MAX_VALUE));
+  }
+
+  @Test
+  void parseIntAfterPrefixInvalidCharacter() {
+    assertThrows(NumberFormatException.class, () -> safeString("*abc").parseIntAfterPrefix());
+    assertThrows(NumberFormatException.class, () -> safeString("$12x").parseIntAfterPrefix());
+    assertThrows(NumberFormatException.class, () -> safeString(":1.5").parseIntAfterPrefix());
   }
 
   @Test

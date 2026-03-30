@@ -132,7 +132,7 @@ public class SafeString implements Comparable<SafeString>, Serializable {
     for (int i = start; i < lim; i++) {
       byte b = buffer.get(i);
       if (b < '0' || b > '9') {
-        break;
+        throw new NumberFormatException("Invalid character in number: " + (char) b);
       }
       result = result * 10 + (b - '0');
     }
