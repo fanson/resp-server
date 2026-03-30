@@ -45,6 +45,7 @@ import io.netty.channel.nio.NioIoHandler;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.timeout.IdleStateHandler;
+import io.netty.util.AttributeKey;
 import io.netty.util.concurrent.Future;
 
 public class RespServer implements Resp {
@@ -54,6 +55,9 @@ public class RespServer implements Resp {
   private static final int BUFFER_SIZE = 1024 * 1024;
   private static final int MAX_FRAME_SIZE = BUFFER_SIZE * 100;
   private static final int DEFAULT_BACKLOG = 1024;
+
+  private static final AttributeKey<Session> SESSION_KEY = AttributeKey.valueOf("resp.session");
+  private static final AttributeKey<String> SOURCE_KEY = AttributeKey.valueOf("resp.sourceKey");
 
   private static final String DEFAULT_HOST = "localhost";
   private static final int DEFAULT_PORT = 12345;
@@ -138,12 +142,17 @@ public class RespServer implements Resp {
   public void connected(ChannelHandlerContext ctx) {
     String sourceKey = sourceKey(ctx.channel());
     LOGGER.debug("client connected: {}", sourceKey);
-    getSession(ctx, sourceKey);
+    Session session = getSession(ctx, sourceKey);
+    ctx.channel().attr(SOURCE_KEY).set(sourceKey);
+    ctx.channel().attr(SESSION_KEY).set(session);
   }
 
   @Override
   public void disconnected(ChannelHandlerContext ctx) {
-    String sourceKey = sourceKey(ctx.channel());
+    String sourceKey = ctx.channel().attr(SOURCE_KEY).get();
+    if (sourceKey == null) {
+      sourceKey = sourceKey(ctx.channel());
+    }
 
     LOGGER.debug("client disconnected: {}", sourceKey);
 
@@ -152,11 +161,11 @@ public class RespServer implements Resp {
 
   @Override
   public void receive(ChannelHandlerContext ctx, RedisToken message) {
-    String sourceKey = sourceKey(ctx.channel());
+    Session session = ctx.channel().attr(SESSION_KEY).get();
 
-    LOGGER.debug("message received: {}", sourceKey);
+    LOGGER.debug("message received: {}", session.getId());
 
-    parseMessage(message, getSession(ctx, sourceKey))
+    parseMessage(message, session)
       .ifPresent(serverContext::processCommand);
   }
 
